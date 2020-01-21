@@ -6,9 +6,9 @@ valid_data: 'valid_ent_vec.json'
 test_data: 'test_ent_vec.json'
 
 # Full vocab
-vocab_size: 100797
-num_ent_types: 1712
-num_relations: 4996
+vocab_size: 73506
+num_ent_types: 9694
+num_relations: 768
 pre_word2vec: '../data/WebQ/glove_pretrained_300d_w2v.npy'
 
 

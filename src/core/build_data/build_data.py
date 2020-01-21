@@ -460,6 +460,7 @@ def build_seed_ent_data(qa, kb, entity2id, entityType2id, relation2id, vocab2id,
         tmp_inds = []
         for i, freebase_key in enumerate(each['freebaseKeyCands'][:topn]):
             tmp_labels.append(freebase_key)
+            #print(freebase_key)
             if freebase_key == each['freebaseKey']:
                 tmp_inds.append(i)
 
@@ -468,11 +469,16 @@ def build_seed_ent_data(qa, kb, entity2id, entityType2id, relation2id, vocab2id,
                 tmp_features.append(features)
             else:
                 tmp_features.append([[]] * 5)
-
+        if(len(each['freebaseKeyCands'])<topn):
+            for k in range(topn-len(each['freebaseKeyCands'])):
+                tmp_labels.append('notinwiki')
+                tmp_features.append([[]] * 5)
         if dtype == 'test':
             if len(tmp_inds) == 0: # No answer
                 tmp_inds.append(-1)
         else:
+            print(dtype)
+            #print(len(tmp_labels))
             assert len(tmp_labels) == topn
 
         assert len(tmp_inds) == 1

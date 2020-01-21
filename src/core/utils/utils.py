@@ -89,6 +89,7 @@ def load_ndjson_to_dict(file):
     try:
         with open(file, 'r') as f:
             for line in f:
+                # print(line.strip())
                 data.update(json.loads(line.strip()))
     except Exception as e:
         raise e
