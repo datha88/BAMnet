@@ -108,3 +108,6 @@ venv.bak/
 /.idea/
 /.vscode/
 /glove.840B.300d.zip
+/src/config2/
+
+*.pyc

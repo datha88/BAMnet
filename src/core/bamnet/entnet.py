@@ -29,6 +29,7 @@ class EntnetAgent(object):
             torch.cuda.set_device(opt['gpu'])
             # It enables benchmark mode in cudnn, which
             # leads to faster runtime when the input sizes do not vary.
+            cudnn.enabled = False
             cudnn.benchmark = True
 
         self.opt = opt

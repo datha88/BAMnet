@@ -24,6 +24,7 @@ if __name__ == '__main__':
     parser.add_argument('-entnet_config', '--entnet_config', required=True, type=str, help='path to the config file')
     parser.add_argument('-raw_data', '--raw_data_dir', required=True, type=str, help='raw data dir')
     cfg = vars(parser.parse_args())
+    
     bamnet_opt = get_config(cfg['bamnet_config'])
     entnet_opt = get_config(cfg['entnet_config'])
 
@@ -57,11 +58,18 @@ if __name__ == '__main__':
     ctx_stopwords = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', "don't", 'should', "should've", 'now', 'd', 'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't", 'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"}
 
     # Build data in real time
-    freebase = load_ndjson(os.path.join(cfg['raw_data_dir'], 'freebase_full.json'), return_type='dict')
+    wikidata = load_ndjson(os.path.join(cfg['raw_data_dir'], 'wikidata.json'), return_type='dict')
     test_data = load_ndjson(os.path.join(cfg['raw_data_dir'], 'raw_test.json'))
-    data_vec = build_data(test_data, freebase, entity2id, entityType2id, relation2id, vocab2id, pred_seed_ents=pred_seed_ents)
+    data_vec = build_data(test_data, wikidata, entity2id, entityType2id, relation2id, vocab2id, pred_seed_ents=pred_seed_ents, mode='test')
 
-    queries, raw_queries, query_mentions, memories, cand_labels, _, gold_ans_labels = data_vec
+    #queries, raw_queries, query_mentions, memories, cand_labels, _, gold_ans_labels = data_vec
+
+    queries = load_json(os.path.join(bamnet_opt['data_dir'], 'test_queries.json'))
+    raw_queries = load_json(os.path.join(bamnet_opt['data_dir'], 'test_raw_queries.json'))
+    query_mentions = load_json(os.path.join(bamnet_opt['data_dir'], 'test_query_mention.json'))
+    memories = load_json(os.path.join(bamnet_opt['data_dir'], 'test_memories.json'))
+    cand_labels = load_json(os.path.join(bamnet_opt['data_dir'], 'test_cand_labels.json'))
+    gold_ans_labels = load_json(os.path.join(bamnet_opt['data_dir'], 'test_gold_ans_labels.json'))
     queries, query_words, query_lengths, memories_vec = vectorize_data(queries, query_mentions, memories, \
                                         max_query_size=bamnet_opt['query_size'], \
                                         max_query_markup_size=bamnet_opt['query_markup_size'], \

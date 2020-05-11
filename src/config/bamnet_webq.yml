@@ -1,15 +1,17 @@
 # Seed 15 Data
 name: 'WebQuestions'
 data_dir: '../data/WebQ/'
+full_data_dir: '../data/WebQ/full_data/'
+vectorize_data_dir: '../data/WebQ/vectorize_data/'
 train_data: 'train_vec.json'
 valid_data: 'valid_vec.json'
 test_data: 'test_vec.json'
 pre_word2vec: '../data/WebQ/glove_pretrained_300d_w2v.npy'
 
 # Full vocab
-vocab_size: 73506
-num_ent_types: 9694
-num_relations: 768
+vocab_size: 117497
+num_ent_types: 7878
+num_relations: 985
 
 num_query_words: 10
 
@@ -35,8 +37,9 @@ num_hops: 1
 
 # Training
 learning_rate: 0.001
-batch_size: 32
-num_epochs: 100
+#batch_size: 2
+batch_size: 2
+num_epochs: 2
 valid_patience: 10
 margin: 1
 
