@@ -2,6 +2,7 @@ import timeit
 import argparse
 
 from core.bamnet.bamnet import BAMnetAgent
+from core.bamnet.bamnet import *
 from core.build_data.build_all import build
 from core.build_data.utils import vectorize_data
 from core.utils.utils import *
@@ -39,7 +40,7 @@ if __name__ == '__main__':
                                         max_query_markup_size=opt['query_markup_size'], \
                                         max_ans_bow_size=opt['ans_bow_size'], \
                                         vocab2id=vocab2id)'''
-    for indx in range(2):
+    '''for indx in range(2):
         #indx = 0       
         test_queries = load_json(os.path.join(opt['full_data_dir'], 'test_'+str(indx)+'_queries.json'))
         test_raw_queries = load_json(os.path.join(opt['full_data_dir'], 'test_'+str(indx)+'_raw_queries.json'))
@@ -59,12 +60,15 @@ if __name__ == '__main__':
         dump_json(test_queries, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_queries.json'))
         dump_json(test_query_words, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_query_words.json'))
         dump_json(test_query_lengths, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_query_lengths.json'))
-        dump_json(test_memories, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_memories.json'))        
+        dump_json(test_memories, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_memories.json'))'''        
     
-    '''start = timeit.default_timer()
-
+    start = timeit.default_timer()
+    test_len = 100
+    test_index_array = []
+    for i in range(test_len):
+        test_index_array.append(i)
     model = BAMnetAgent(opt, ctx_stopwords, vocab2id)
-    pred = model.predict([memories_vec, queries, query_words, raw_queries, query_mentions, query_lengths], cand_labels, batch_size=opt['test_batch_size'], margin=2)
+    pred = model.predict(test_index_array, batch_size=opt['test_batch_size'], margin=2)
 
     print('\nPredictions')
     for margin in opt['test_margin']:
@@ -72,6 +76,14 @@ if __name__ == '__main__':
         
         predictions = dynamic_pred(pred, margin)
         
-        calc_avg_f1(gold_ans_labels, predictions)
-    print('Runtime: %ss' % (timeit.default_timer() - start))'''
+        test_gold_ans_labels = []
+        for index in range(len(test_index_array)):
+            file_num = int(index / 50)
+            file_index = int(index % 50)
+            filename = 'test_'+str(file_num)+'_gold_ans_labels.json'
+            gold_ans_labels = get_data_from_file(opt,filename,file_index)
+            test_gold_ans_labels.append(gold_ans_labels)
+                
+        calc_avg_f1(test_gold_ans_labels, predictions)
+    print('Runtime: %ss' % (timeit.default_timer() - start))
     #import pdb;pdb.set_trace()

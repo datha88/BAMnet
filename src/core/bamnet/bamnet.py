@@ -184,6 +184,7 @@ class BAMnetAgent(object):
         #print('Training size: {}, Validation size: {}'.format(len(train_y), len(valid_y)))
         train_len = 100
         valid_len = 20
+        
         random.seed(seed_val)
         print('Training size: {}, Validation size: {}'.format( train_len, valid_len))
         best_loss = float("inf")
@@ -215,6 +216,7 @@ class BAMnetAgent(object):
         valid_index_array = []
         for i in range(valid_len):
             valid_index_array.append(i)
+        
         # generate batch size random numbers between 1 and train length
         for epoch in range(1, self.opt['num_epochs'] + 1):
             start = timeit.default_timer()
@@ -277,15 +279,25 @@ class BAMnetAgent(object):
         '''Prediction scores are returned in the verbose mode.
         '''
         if not silence:
-            print('Testing size!!! Need to fill up')
-            #print('Testing size: {}'.format(len(cand_labels)))
-        predictions = []
-        randomlist_valid_gen = get_random_index_batch(valid_index_array, batch_size)
-        for randomlist in randomlist_valid_gen:
-            valid_gen = get_random_batch(opt,randomlist,mode='valid',predict_tag=1)   
-            for batch_xs, batch_cands in valid_gen:
-                batch_pred = self.predict_step(batch_xs, batch_cands, margin, verbose=verbose)
-                predictions.extend(batch_pred)
+            
+            
+            print('Testing size: {}'.format(test_len))
+            
+            predictions = []
+            randomlist_test_gen = get_random_index_batch(test_index_array, batch_size)
+            for randomlist in randomlist_test_gen:
+                test_gen = get_random_batch(opt,randomlist,mode='test',predict_tag=1)   
+                for batch_xs, batch_cands in test_gen:
+                    batch_pred = self.predict_step(batch_xs, batch_cands, margin, verbose=verbose)
+                    predictions.extend(batch_pred)
+        else:
+            predictions = []
+            randomlist_valid_gen = get_random_index_batch(valid_index_array, batch_size)
+            for randomlist in randomlist_valid_gen:
+                valid_gen = get_random_batch(opt,randomlist,mode='valid',predict_tag=1)   
+                for batch_xs, batch_cands in valid_gen:
+                    batch_pred = self.predict_step(batch_xs, batch_cands, margin, verbose=verbose)
+                    predictions.extend(batch_pred)
         return predictions     
             
 
