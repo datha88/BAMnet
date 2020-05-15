@@ -279,12 +279,12 @@ class BAMnetAgent(object):
         '''Prediction scores are returned in the verbose mode.
         '''
         if not silence:
-            
+            test_len =100
             
             print('Testing size: {}'.format(test_len))
             
             predictions = []
-            randomlist_test_gen = get_random_index_batch(test_index_array, batch_size)
+            randomlist_test_gen = get_random_index_batch(valid_index_array, batch_size)
             for randomlist in randomlist_test_gen:
                 test_gen = get_random_batch(opt,randomlist,mode='test',predict_tag=1)   
                 for batch_xs, batch_cands in test_gen:

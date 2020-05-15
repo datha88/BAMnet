@@ -60,7 +60,7 @@ if __name__ == '__main__':
         dump_json(test_queries, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_queries.json'))
         dump_json(test_query_words, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_query_words.json'))
         dump_json(test_query_lengths, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_query_lengths.json'))
-        dump_json(test_memories, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_memories.json'))'''        
+        dump_json(test_memories, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_memories.json'))'''
     
     start = timeit.default_timer()
     test_len = 100
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     for i in range(test_len):
         test_index_array.append(i)
     model = BAMnetAgent(opt, ctx_stopwords, vocab2id)
-    pred = model.predict(test_index_array, batch_size=opt['test_batch_size'], margin=2)
+    pred = model.predict(test_index_array, opt,  batch_size=opt['test_batch_size'], margin=2)
 
     print('\nPredictions')
     for margin in opt['test_margin']:
