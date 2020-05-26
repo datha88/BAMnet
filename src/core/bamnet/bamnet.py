@@ -243,22 +243,13 @@ class BAMnetAgent(object):
             
             # if False:
             if epoch > 0:
-                pred = self.predict(valid_index_array, self.opt, batch_size=1, margin=self.opt['margin'], silence=True)
-                predictions = [unique([x[0] for x in each]) for each in pred]
-                valid_gold_ans_labels = []
-                for index in range(len(valid_index_array)):
-                    file_num = int(index / 50)
-                    #print('File Num',file_num) 
-                    file_index = int(index % 50)
-                    #print('File Index',file_index) 
-                    filename = 'valid_'+str(file_num)+'_gold_ans_labels.json'
-                    gold_ans_labels = get_data_from_file(self.opt,filename,file_index)
-                    valid_gold_ans_labels.append(gold_ans_labels)
+                valid_f1 = self.predict(valid_index_array, self.opt, batch_size=1, margin=self.opt['margin'], silence=True)
+                
                 #print('valid_gold_ans_labels', len(valid_gold_ans_labels))
                 #print(valid_gold_ans_labels)
                 #print('predictions', len(predictions))
                 #print(predictions)
-                valid_f1 = calc_avg_f1(valid_gold_ans_labels, predictions, verbose=False)[-1]
+                #valid_f1 = calc_avg_f1(valid_gold_ans_labels, predictions, verbose=False)[-1]
             else:
                 valid_f1 = 0.
             print('Epoch {}/{}: Runtime: {}s, Train loss: {:.4}, valid loss: {:.4}, valid F1: {:.4}'.format(epoch, self.opt['num_epochs'], \
@@ -278,6 +269,7 @@ class BAMnetAgent(object):
     def predict(self, valid_index_array, opt, batch_size=32, margin=1, ys=None, verbose=False, silence=False):
         '''Prediction scores are returned in the verbose mode.
         '''
+        
         if not silence:
             test_len =100
             
@@ -290,15 +282,49 @@ class BAMnetAgent(object):
                 for batch_xs, batch_cands in test_gen:
                     batch_pred = self.predict_step(batch_xs, batch_cands, margin, verbose=verbose)
                     predictions.extend(batch_pred)
+            return predictions
         else:
-            predictions = []
+            avg_recall = 0
+            avg_precision = 0
+            avg_f1 = 0
+            count = 0
+            #predictions = []
+            out_f = open('error_analysis.txt', 'w',encoding='utf-8')
             randomlist_valid_gen = get_random_index_batch(valid_index_array, batch_size)
             for randomlist in randomlist_valid_gen:
                 valid_gen = get_random_batch(opt,randomlist,mode='valid',predict_tag=1)   
                 for batch_xs, batch_cands in valid_gen:
                     batch_pred = self.predict_step(batch_xs, batch_cands, margin, verbose=verbose)
-                    predictions.extend(batch_pred)
-        return predictions     
+                    #predictions.extend(batch_pred)
+                    # unique of the 
+                    predictions = [unique([x[0] for x in each]) for each in batch_pred]
+                    #predictions = unique([x[0] for x in batch_pred])
+                    print('Predictions', predictions)
+                    #valid_gold_ans_labels = []
+                    file_num = int(randomlist[0] / 50)
+                    # print('File Num',file_num)
+                    file_index = int(randomlist[0] % 50)
+                    # print('File Index',file_index)
+                    filename = 'valid_' + str(file_num) + '_gold_ans_labels.json'
+                    gold_ans_labels = get_data_from_file(self.opt, filename, file_index)               
+                    print('Valid gold ans labels', gold_ans_labels)
+                    recall, precision, f1 = calc_f1(gold_ans_labels, predictions[0])
+                    print(recall,precision,f1)
+                    avg_recall += recall
+                    avg_precision += precision
+                    avg_f1 += f1
+                    count += 1
+                    if f1 < 0.6:
+                        out_f.write('{}\t{}\t{}\t{}\n'.format(randomlist[0], gold_ans_labels, predictions[0], f1))
+                    #valid_f1 = calc_avg_f1(valid_gold_ans_labels, predictions, verbose=False)[-1]
+            out_f.close()
+            avg_recall = float(avg_recall) / count
+            avg_precision = float(avg_precision) / count
+            avg_f1 = float(avg_f1) / count
+            avg_new_f1 = 0
+            if avg_precision + avg_recall > 0:
+                avg_new_f1 = 2 * avg_recall * avg_precision / (avg_precision + avg_recall)
+            return avg_f1
             
 
         '''for epoch in range(1, self.opt['num_epochs'] + 1):
