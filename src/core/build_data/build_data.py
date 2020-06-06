@@ -183,36 +183,13 @@ def build_data(qa, kb, entity2id, entityType2id, relation2id, vocab2id, pred_see
     cand_labels = [] # Candidate answer labels (i.e., names)
     gold_ans_labels = [] # True gold answer labels
     gold_ans_inds = [] # The "gold" answer indices corresponding to the cand list
-    filepath='./../data/WebQ/full_data/'+mode+'_'+str(count_lim)
-    lower_lim = count_lim*50
-    upper_lim = len(qa) if len(qa) < lower_lim+50 else lower_lim+50 
-    print(len(qa))
-    if mode != None:
-        with open(filepath+'_queries.json', 'w') as f:
-            f.write('[')
-            f.close()
-        with open(filepath+'_raw_queries.json', 'w') as f:
-            f.write('[')
-            f.close()
-        with open(filepath+'_query_mention.json', 'w') as f:
-            f.write('[')
-            f.close()
-        with open(filepath+'_gold_ans_labels.json', 'w') as f:
-            f.write('[')
-            f.close()
-        with open(filepath+'_gold_ans_inds.json', 'w') as f:
-            f.write('[')
-            f.close()
-        with open(filepath+'_memories.json', 'w') as f:
-            f.write('[')
-            f.close()
-        with open(filepath+'_cand_labels.json', 'w') as f:
-            f.write('[')
-            f.close()
-        last_indx = upper_lim-1
+    filepath='./../data/WebQ/split_data/'+mode+'_'+str(count_lim)
+    #lower_lim = count_lim*50
+    #upper_lim = len(qa) if len(qa) < lower_lim+50 else lower_lim+50 
+    #print(len(qa))
     for qid, each in enumerate(qa):
         #print(qid)
-        if(qid>=lower_lim and qid<upper_lim):
+        if(qid==count_lim):
             freebase_key = each['freebaseKey'] if not pred_seed_ents else pred_seed_ents[qid]
             if isinstance(freebase_key, list):
                 freebase_key = freebase_key[0] if len(freebase_key) > 0 else ''
@@ -220,76 +197,24 @@ def build_data(qa, kb, entity2id, entityType2id, relation2id, vocab2id, pred_see
             query, topic_men = delex_query_topic_ent(each['qText'], freebase_key, each['entities'])
             query2 = delex_query(query, each['entities'], config.delex_mention_types)
             q = [vocab2id[x] if x in vocab2id else config.RESERVED_TOKENS['UNK'] for x in query2]
-            #queries.append(q)
+            queries.append(q)
 
-            with open(filepath+'_queries.json', 'a') as f:
-                f.write(json.dumps(q))
-                #f.write(str(q).replace('\'', '"'))
-                if(qid !=last_indx):
-                    f.write(',')
-            with open(filepath+'_raw_queries.json', 'a') as f:
-                f.write(json.dumps(query))
-                #f.write(str(query).replace('\'', '"'))
-                if(qid !=last_indx):
-                    f.write(',')
-            with open(filepath+'_query_mention.json', 'a') as f:
-                f.write(json.dumps([(tokenize(x[0].lower()), x[1].lower()) for x in each['entities'] if topic_men != x[0]]))
-                #f.write(str([(tokenize(x[0].lower()), x[1].lower()) for x in each['entities'] if topic_men != x[0]]).replace('\'', '"').replace('(', '[').replace(')', ']'))
-                if(qid !=last_indx):
-                    f.write(',')
-            with open(filepath+'_gold_ans_labels.json', 'a') as f:
-                f.write(json.dumps(each['answers']))
-                #f.write(str(each['answers']).replace('\'', '"'))
-                if(qid !=last_indx):
-                    f.write(',')
-            
-            #raw_queries.append(query)
+            raw_queries.append(query)
 
-            #query_mentions.append([(tokenize(x[0].lower()), x[1].lower()) for x in each['entities'] if topic_men != x[0]])
-            #gold_ans_labels.append(each['answers'])
+            query_mentions.append([(tokenize(x[0].lower()), x[1].lower()) for x in each['entities'] if topic_men != x[0]])
+            gold_ans_labels.append(each['answers'])
 
             if not freebase_key in kb:
-                #gold_ans_inds.append([])
-                #memories.append([[]] * 8)
-                #cand_labels.append([])
-                with open(filepath+'_gold_ans_inds.json', 'a') as f:
-                    f.write(json.dumps([]))
-                    #f.write(str([]))
-                    if(qid !=last_indx):
-                        f.write(',')
-                with open(filepath+'_memories.json', 'a') as f:
-                    f.write(json.dumps([[]]*8))
-                    #f.write(str([[]]*8))
-                    if(qid !=last_indx):
-                        f.write(',')
-                with open(filepath+'_cand_labels.json', 'a') as f:
-                    f.write(json.dumps([[]]*8))
-                    #f.write(str([[]]*8))
-                    if(qid !=last_indx):
-                        f.write(',')
+                gold_ans_inds.append([])
+                memories.append([[]] * 8)
+                cand_labels.append([])
                 continue
 
-            
             ans_cands = build_ans_cands(kb[freebase_key], entity2id, entityType2id, relation2id, vocab2id)
-            with open(filepath+'_memories.json', 'a') as f:
-                f.write(json.dumps(ans_cands[:-1]))
-                #f.write(str(ans_cands[:-1]).replace('\'', '"').replace('(', '[').replace(')', ']'))
-                if(qid !=last_indx):
-                    f.write(',')
-            with open(filepath+'_cand_labels.json', 'a') as f:
-                f.write(json.dumps(ans_cands[-1]))
-                #f.write(str(ans_cands[-1]).replace('\'', '"'))
-                if(qid !=last_indx):
-                    f.write(',')
-            #memories.append(ans_cands[:-1])
-            #cand_labels.append(ans_cands[-1])
+            memories.append(ans_cands[:-1])
+            cand_labels.append(ans_cands[-1])
             if len(ans_cands[0]) == 0:
-                with open(filepath+'_gold_ans_inds.json', 'a') as f:
-                    f.write(json.dumps([]))
-                    #f.write(str([]))
-                    if(qid !=last_indx):
-                        f.write(',')
-                #gold_ans_inds.append([])
+                gold_ans_inds.append([])
                 continue
 
             norm_cand_labels = [normalize_answer(x) for x in ans_cands[-1]]
@@ -301,34 +226,7 @@ def build_data(qa, kb, entity2id, entityType2id, relation2id, vocab2id, pred_see
                 tmp_cand_inds.extend(inds)
             # Note that tmp_cand_inds can be empty in which case
             # the question can *NOT* be answered by this KB entity.
-            #gold_ans_inds.append(tmp_cand_inds)
-            with open(filepath+'_gold_ans_inds.json', 'a') as f:
-                f.write(json.dumps(tmp_cand_inds))
-                #f.write(str(tmp_cand_inds))
-                if(qid !=last_indx):
-                    f.write(',')
-    if mode != None:
-        with open(filepath+'_queries.json', 'a') as f:
-            f.write(']')
-            f.close()
-        with open(filepath+'_raw_queries.json', 'a') as f:
-            f.write(']')
-            f.close()
-        with open(filepath+'_query_mention.json', 'a') as f:
-            f.write(']')
-            f.close()
-        with open(filepath+'_gold_ans_labels.json', 'a') as f:
-            f.write(']')
-            f.close()
-        with open(filepath+'_gold_ans_inds.json', 'a') as f:
-            f.write(']')
-            f.close()
-        with open(filepath+'_memories.json', 'a') as f:
-            f.write(']')
-            f.close()
-        with open(filepath+'_cand_labels.json', 'a') as f:
-            f.write(']')
-            f.close()
+            gold_ans_inds.append(tmp_cand_inds)
     return (queries, raw_queries, query_mentions, memories, cand_labels, gold_ans_inds, gold_ans_labels)
 
 def build_vocab(data, freebase, used_fbkeys=None, min_freq=1):

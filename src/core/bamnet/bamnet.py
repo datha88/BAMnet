@@ -23,6 +23,7 @@ from ..utils.metrics import *
 from .. import config
 from core.utils.utils import *
 
+#from memory_profiler import profile
 
 
 CTX_BOW_INDEX = -5
@@ -56,39 +57,47 @@ def get_text_overlap(raw_query, query_mentions, ctx_ent_names, vocab2id, ctx_sto
         return [vocab2id[men_type] if men_type in vocab2id else config.RESERVED_TOKENS['UNK']]
     else:
         return [vocab2id[x] if x in vocab2id else config.RESERVED_TOKENS['UNK'] for x in sub_seq]
-def get_data_from_file(opt,filename, index):
-    data = load_json(os.path.join(opt['vectorize_data_dir'], filename))
-    return data[index]
-def get_batch(opt, rand_num, mode = 'train',predict_tag=0):
 
-    file_num = int(rand_num / 50)
-    print('File Num',file_num) 
-    file_index = int(rand_num % 50)
-    print('File Index',file_index) 
-
-    filename = mode+'_'+str(file_num)+'_memories.json'
-    memories = get_data_from_file(opt,filename,file_index)
-    filename = mode+'_'+str(file_num)+'_queries.json'
-    queries = get_data_from_file(opt,filename,file_index)
-    filename = mode+'_'+str(file_num)+'_query_words.json'
-    query_words = get_data_from_file(opt,filename,file_index)
-    filename = mode+'_'+str(file_num)+'_raw_queries.json'
-    raw_queries = get_data_from_file(opt,filename,file_index)
-    filename = mode+'_'+str(file_num)+'_query_mention.json'
-    query_mentions = get_data_from_file(opt,filename,file_index)
-    filename = mode+'_'+str(file_num)+'_query_lengths.json'
-    query_lengths = get_data_from_file(opt,filename,file_index)
-    if(predict_tag == 1):
-        filename = mode+'_'+str(file_num)+'_cand_labels.json'
-        gold_ans_inds = get_data_from_file(opt,filename,file_index)
+#@profile
+def get_data_from_file(opt,filename, predict_tag=0):
+    #print('Start:get_data_from_file: filename: ', filename)
+    #print('StartTime:get_data_from_file: %ss' % (timeit.default_timer()))
+    data = load_json(os.path.join(opt['vectorized_split_data_dir'], filename))
+    #print('EndTime:get_data_from_file: %ss' % (timeit.default_timer()))
+    if predict_tag == 0:
+        if filename.startswith('valid') ==  True:
+            queries, raw_queries, query_mentions, query_words, query_lengths, memories, _ , gold_ans_inds, _ = data
+            del data
+            return memories[0], queries[0], query_words[0], raw_queries[0], query_mentions[0], query_lengths[0], gold_ans_inds[0]
+        else:
+            queries, raw_queries, query_mentions, query_words, query_lengths, memories, gold_ans_inds = data 
+            del data
+            return memories[0], queries[0], query_words[0], raw_queries[0], query_mentions[0], query_lengths[0], gold_ans_inds[0]
     else:
-        filename = mode+'_'+str(file_num)+'_gold_ans_inds.json'
-        gold_ans_inds = get_data_from_file(opt,filename,file_index)
+        queries, raw_queries, query_mentions, query_words, query_lengths, memories, cand_labels, _ , _ = data
+        del data
+        return memories[0], queries[0], query_words[0], raw_queries[0], query_mentions[0], query_lengths[0], cand_labels[0]
     
-    print(filename)
-    return memories, queries, query_words, raw_queries, query_mentions, query_lengths, gold_ans_inds
-     
+def get_valid_anslabels_from_file(opt,filename):
+    data = load_json(os.path.join(opt['vectorized_split_data_dir'], filename))
+    _, _, _, _, _, _, _ , _, gold_ans_labels = data
+    del data
+    return gold_ans_labels[0]
 
+#@profile
+def get_batch(opt, rand_num, mode = 'train',predict_tag=0):
+    #print('StartTime:get_batch: %ss' % (timeit.default_timer()))
+    filename = mode+'_'+str(rand_num)+'.json'
+    if(predict_tag == 1):
+        memories, queries, query_words, raw_queries, query_mentions, query_lengths, gold_ans_inds = get_data_from_file(opt,filename,predict_tag)
+    else:
+        memories, queries, query_words, raw_queries, query_mentions, query_lengths, gold_ans_inds = get_data_from_file(opt,filename,predict_tag)
+    print(filename)
+    #print('EndTime:get_batch: %ss' % (timeit.default_timer()))
+    return memories, queries, query_words, raw_queries, query_mentions, query_lengths, gold_ans_inds
+    #return memories[0], queries[0], query_words[0], raw_queries[0], query_mentions[0], query_lengths[0], gold_ans_inds[0]
+     
+#@profile
 def get_random_batch(opt,randomlist,mode='train',predict_tag=0):
     memories = []
     queries = []
@@ -97,23 +106,7 @@ def get_random_batch(opt,randomlist,mode='train',predict_tag=0):
     query_mentions = []
     query_lengths = []  
     gold_ans_inds = []
-    index=0
-    '''temp_memories, temp_queries, temp_query_words, temp_raw_queries, temp_query_mentions, temp_query_lengths, temp_gold_ans_inds = get_batch(opt,randomlist[index])
-    memories.append(temp_memories)
-    queries.append(temp_queries)
-    query_words.append(temp_query_words)
-    raw_queries.append(temp_raw_queries)
-    query_mentions.append(temp_query_mentions)
-    query_lengths.append(temp_query_lengths)
-    gold_ans_inds.append(temp_gold_ans_inds)
-    for i in range(32):
-        memories.append(temp_memories)
-        queries.append(temp_queries)
-        query_words.append(temp_query_words)
-        raw_queries.append(temp_raw_queries)
-        query_mentions.append(temp_query_mentions)
-        query_lengths.append(temp_query_lengths)
-        gold_ans_inds.append(temp_gold_ans_inds)'''
+    
     for index in range(len(randomlist)):
         temp_memories, temp_queries, temp_query_words, temp_raw_queries, temp_query_mentions, temp_query_lengths, temp_gold_ans_inds = get_batch(opt,randomlist[index],mode,predict_tag)
         memories.append(temp_memories)
@@ -125,6 +118,7 @@ def get_random_batch(opt,randomlist,mode='train',predict_tag=0):
         gold_ans_inds.append(temp_gold_ans_inds)
     
     yield ((memories, queries, query_words, raw_queries, query_mentions, query_lengths), gold_ans_inds)
+
 def get_random_index_batch(random_array, batch_size):
     for i in range(0, len(random_array), batch_size):
         yield (random_array[i: i + batch_size])
@@ -180,10 +174,11 @@ class BAMnetAgent(object):
         super(BAMnetAgent, self).__init__()
 
     #def train(self, train_X, train_y, valid_X, valid_y, valid_cand_labels, valid_gold_ans_labels, seed=1234):
+    #@profile
     def train(self, seed_val=2):
         #print('Training size: {}, Validation size: {}'.format(len(train_y), len(valid_y)))
-        train_len = 100
-        valid_len = 20
+        train_len = 10
+        valid_len = 5
         
         random.seed(seed_val)
         print('Training size: {}, Validation size: {}'.format( train_len, valid_len))
@@ -207,9 +202,11 @@ class BAMnetAgent(object):
         '''
         #num_batches = len(queries) // self.opt['batch_size'] + (len(queries) % self.opt['batch_size'] != 0)
         num_batches = train_len // self.opt['batch_size'] + (train_len % self.opt['batch_size'] != 0)
+        print('Number of train batches: ',num_batches)
         #num_valid_batches = len(valid_queries) // self.opt['batch_size'] + (len(valid_queries) % self.opt['batch_size'] != 0)
         num_valid_batches = valid_len // self.opt['batch_size'] + (valid_len % self.opt['batch_size'] != 0)
-        
+        print('Number of valid batches: ',num_valid_batches)
+
         random_index_array = []
         for i in range(train_len):
             random_index_array.append(i)
@@ -220,30 +217,39 @@ class BAMnetAgent(object):
         # generate batch size random numbers between 1 and train length
         for epoch in range(1, self.opt['num_epochs'] + 1):
             start = timeit.default_timer()
-            #for epoch in range(1, 2):
             train_loss = 0
-            #random.shuffle(random_index_array)
+            random.shuffle(random_index_array)
             print('Epoch', epoch)
             randomlist_gen = get_random_index_batch(random_index_array, self.opt['batch_size'])
             for randomlist in randomlist_gen:
                 #print(len(randomlist))
+                #print('Getting random batch:train_gen: %ss' % (timeit.default_timer()))
                 train_gen = get_random_batch(self.opt,randomlist)
-                for batch_xs, batch_ys in train_gen:                    
-                    train_loss += self.train_step(batch_xs, batch_ys) / num_batches
-                #print('Trainloss ',train_loss)
-                    
+                for batch_xs, batch_ys in train_gen:
+                    #print('Inside:train_gen: %ss' % (timeit.default_timer()))  
+                    train_loss += float(self.train_step(batch_xs, batch_ys) / num_batches)
+                    del batch_xs, batch_ys
+                del train_gen
+            
+            random.shuffle(valid_index_array)
             randomlist_valid_gen = get_random_index_batch(valid_index_array, self.opt['batch_size'])
             for randomlist in randomlist_valid_gen:
+                #print('Getting random batch:valid_gen: %ss' % (timeit.default_timer()))
                 valid_gen = get_random_batch(self.opt,randomlist,mode='valid')
                 valid_loss = 0
                 for batch_valid_xs, batch_valid_ys in valid_gen:
-                    valid_loss += self.train_step(batch_valid_xs, batch_valid_ys, is_training=False) / num_valid_batches
+                    #print('Inside:valid_gen: %ss' % (timeit.default_timer()))
+                    valid_loss += float(self.train_step(batch_valid_xs, batch_valid_ys, is_training=False) / num_valid_batches)
+                    #print('After train step:valid_gen: %ss' % (timeit.default_timer()))
+                    del batch_valid_xs, batch_valid_ys
                 #print('Valid loss', valid_loss)
+                del valid_gen
                 self.scheduler.step(valid_loss)
             
             # if False:
             if epoch > 0:
                 valid_f1 = self.predict(valid_index_array, self.opt, batch_size=1, margin=self.opt['margin'], silence=True)
+                #print('After prediction: %ss' % (timeit.default_timer()))
                 
                 #print('valid_gold_ans_labels', len(valid_gold_ans_labels))
                 #print(valid_gold_ans_labels)
@@ -265,11 +271,12 @@ class BAMnetAgent(object):
                 self.save(self.opt['model_file'] + '.final')
                 break
         self.save(self.opt['model_file'] + '.final')
-        
+    
+    #@profile
     def predict(self, valid_index_array, opt, batch_size=32, margin=1, ys=None, verbose=False, silence=False):
         '''Prediction scores are returned in the verbose mode.
         '''
-        
+        #print('Start prediction: %ss' % (timeit.default_timer()))
         if not silence:
             test_len =100
             
@@ -278,10 +285,13 @@ class BAMnetAgent(object):
             predictions = []
             randomlist_test_gen = get_random_index_batch(valid_index_array, batch_size)
             for randomlist in randomlist_test_gen:
+                #print('Getting random batch:test_gen: %ss' % (timeit.default_timer()))
                 test_gen = get_random_batch(opt,randomlist,mode='test',predict_tag=1)   
                 for batch_xs, batch_cands in test_gen:
+                    #print('Inside:test_gen: %ss' % (timeit.default_timer()))
                     batch_pred = self.predict_step(batch_xs, batch_cands, margin, verbose=verbose)
                     predictions.extend(batch_pred)
+                    #print('After:test_gen: %ss' % (timeit.default_timer()))
             return predictions
         else:
             avg_recall = 0
@@ -292,39 +302,40 @@ class BAMnetAgent(object):
             out_f = open('error_analysis.txt', 'w',encoding='utf-8')
             randomlist_valid_gen = get_random_index_batch(valid_index_array, batch_size)
             for randomlist in randomlist_valid_gen:
-                valid_gen = get_random_batch(opt,randomlist,mode='valid',predict_tag=1)   
+                valid_gen = get_random_batch(opt,randomlist,mode='valid',predict_tag=1)
+                #print('Predict:Getting random batch:valid_gen: %ss' % (timeit.default_timer()))
                 for batch_xs, batch_cands in valid_gen:
+                    #print('Predict:Inside:valid_gen: %ss' % (timeit.default_timer()))
                     batch_pred = self.predict_step(batch_xs, batch_cands, margin, verbose=verbose)
-                    #predictions.extend(batch_pred)
+                    del batch_xs, batch_cands
                     # unique of the 
                     predictions = [unique([x[0] for x in each]) for each in batch_pred]
-                    #predictions = unique([x[0] for x in batch_pred])
-                    print('Predictions', predictions)
-                    #valid_gold_ans_labels = []
-                    file_num = int(randomlist[0] / 50)
-                    # print('File Num',file_num)
-                    file_index = int(randomlist[0] % 50)
-                    # print('File Index',file_index)
-                    filename = 'valid_' + str(file_num) + '_gold_ans_labels.json'
-                    gold_ans_labels = get_data_from_file(self.opt, filename, file_index)               
+                    del batch_pred
+                    #print('Predictions', predictions)
+                    
+                    filename = 'valid_' + str(randomlist[0]) + '.json'
+                    gold_ans_labels = get_valid_anslabels_from_file(self.opt, filename)               
                     print('Valid gold ans labels', gold_ans_labels)
                     recall, precision, f1 = calc_f1(gold_ans_labels, predictions[0])
                     print(recall,precision,f1)
-                    avg_recall += recall
-                    avg_precision += precision
+                    avg_recall += float(recall)
+                    avg_precision += float(precision)
                     avg_f1 += f1
                     count += 1
+                    #print('Predict:After:valid_gen: %ss' % (timeit.default_timer()))
                     if f1 < 0.6:
                         out_f.write('{}\t{}\t{}\t{}\n'.format(randomlist[0], gold_ans_labels, predictions[0], f1))
                     #valid_f1 = calc_avg_f1(valid_gold_ans_labels, predictions, verbose=False)[-1]
+                del valid_gen
             out_f.close()
+            del randomlist_valid_gen
             avg_recall = float(avg_recall) / count
             avg_precision = float(avg_precision) / count
             avg_f1 = float(avg_f1) / count
             avg_new_f1 = 0
             if avg_precision + avg_recall > 0:
                 avg_new_f1 = 2 * avg_recall * avg_precision / (avg_precision + avg_recall)
-            return avg_f1
+            return avg_f1#predictions
             
 
         '''for epoch in range(1, self.opt['num_epochs'] + 1):
@@ -381,6 +392,7 @@ class BAMnetAgent(object):
                                     self.opt['ans_ctx_entity_bow_size'], xs[3], xs[4], xs[1])
             selected_memories = [to_cuda(torch.LongTensor(np.array(x)), self.opt['cuda']) for x in zip(*selected_memories)]
             ctx_mask = to_cuda(ctx_mask, self.opt['cuda'])
+            
             queries = to_cuda(torch.LongTensor(xs[1]), self.opt['cuda'])
             query_words = to_cuda(torch.LongTensor(xs[2]), self.opt['cuda'])
             query_lengths = to_cuda(torch.LongTensor(xs[5]), self.opt['cuda'])
@@ -402,6 +414,7 @@ class BAMnetAgent(object):
                     o.step()
             return loss.item()
 
+    #@profile
     def predict_step(self, xs, cand_labels, margin, verbose=False):
         self.model.train(mode=False)
         with torch.set_grad_enabled(False):
@@ -412,11 +425,15 @@ class BAMnetAgent(object):
             queries = to_cuda(torch.LongTensor(xs[1]), self.opt['cuda'])
             query_words = to_cuda(torch.LongTensor(xs[2]), self.opt['cuda'])
             query_lengths = to_cuda(torch.LongTensor(xs[5]), self.opt['cuda'])
+            del xs
             mem_hop_scores = self.model(memories, queries, query_lengths, query_words, ctx_mask=None)
-
+            del memories, queries, query_words, query_lengths
             predictions = self.ranked_predictions(cand_labels, mem_hop_scores[-1].data, margin)
+            print('predict_step --> predictions: ', predictions)
+            del cand_labels, mem_hop_scores
             return predictions
 
+    #@profile
     def dynamic_ctx_negative_sampling(self, memories, ys, mem_size, ctx_bow_size, raw_queries, query_mentions, queries):
         # Randomly select negative samples from the candidiate answer set
         ctx_bow_size = max(min(max(map(len, (a for x in list(zip(*memories))[CTX_BOW_INDEX] for y in x for a in y)), default=0), ctx_bow_size), 1)
@@ -461,6 +478,7 @@ class BAMnetAgent(object):
             selected_memories.append(xx)
             new_ys.append(list(range(num_gold)))
             ctx_mask.append(tmp_ctx_mask)
+        del memories
 
         max_ctx_num = max(max([y for x in selected_memories for y in x[CTX_BOW_INDEX]]), 1)
         for i in range(len(selected_memories)): # Example
@@ -471,6 +489,7 @@ class BAMnetAgent(object):
                     selected_memories[i][CTX_BOW_INDEX - 1][j] += [1] * (max_ctx_num - count)
         return selected_memories, new_ys, torch.Tensor(np.array(ctx_mask))
 
+    #@profile
     def pad_ctx_memory(self, memories, ctx_bow_size, raw_queries, query_mentions, queries):
         cand_ans_size = max(max(map(len, list(zip(*memories))[0]), default=0) - 1, 1) # The last element is a dummy candidate
         ctx_bow_size = max(min(max(map(len, (a for x in list(zip(*memories))[CTX_BOW_INDEX] for y in x for a in y)), default=0), ctx_bow_size), 1)
@@ -503,6 +522,7 @@ class BAMnetAgent(object):
             xx += [np.array(x)[augmented_inds] for x in memories[i][CTX_BOW_INDEX+1:]]
             pad_memories.append(xx)
             ctx_mask.append(tmp_ctx_mask)
+        del memories
 
         max_ctx_num = max(max([y for x in pad_memories for y in x[CTX_BOW_INDEX]]), 1)
         for i in range(len(pad_memories)): # Example
@@ -530,6 +550,7 @@ class BAMnetAgent(object):
         new_scores = scores - (margin - 1) * gold_mask
         return new_scores
 
+    #@profile
     def ranked_predictions(self, cand_labels, scores, margin):
         _, sorted_inds = scores.sort(descending=True, dim=1)
         return [[(cand_labels[i][j], scores[i][j]) for j in r if scores[i][j] + margin >= scores[i][r[0]] \

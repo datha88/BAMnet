@@ -13,6 +13,8 @@ import torch.nn.functional as F
 
 from .utils import to_cuda
 
+#from memory_profiler import profile
+
 
 INF = 1e20
 VERY_SMALL_NUMBER = 1e-10
@@ -247,6 +249,7 @@ class AnsEncoder(nn.Module):
                         rnn_type='lstm', \
                         use_cuda=use_cuda)
 
+    #@profile
     def forward(self, x_type_bow, x_types, x_type_bow_len, x_path_bow, x_paths, x_path_bow_len, x_ctx_ents, x_ctx_ent_len, x_ctx_ent_num):
         ans_type_bow, ans_types, ans_path_bow, ans_paths, ans_ctx_ent = self.enc_ans_features(x_type_bow, x_types, x_type_bow_len, x_path_bow, x_paths, x_path_bow_len, x_ctx_ents, x_ctx_ent_len, x_ctx_ent_num)
         ans_val, ans_key = self.enc_comp_kv(ans_type_bow, ans_types, ans_path_bow, ans_paths, ans_ctx_ent)
@@ -265,6 +268,7 @@ class AnsEncoder(nn.Module):
         ans_comp_key = [ans_type_bow_key, ans_paths_key, ans_ctx_key]
         return ans_comp_val, ans_comp_key
 
+    #@profile
     def enc_ans_features(self, x_type_bow, x_types, x_type_bow_len, x_path_bow, x_paths, x_path_bow_len, x_ctx_ents, x_ctx_ent_len, x_ctx_ent_num):
         '''
         x_types: answer type
@@ -344,6 +348,7 @@ class EncoderRNN(nn.Module):
         else:
             self.embed.weight.data.uniform_(-0.08, 0.08)
 
+    #@profile
     def forward(self, x, x_len):
         """x: [batch_size * max_length]
            x_len: [batch_size]
@@ -359,6 +364,7 @@ class EncoderRNN(nn.Module):
         if self.rnn_type == 'lstm':
             c0 = to_cuda(torch.zeros(self.num_directions, x_len.size(0), self.hidden_size), self.use_cuda)
             packed_h, (packed_h_t, _) = self.model(x, (h0, c0))
+            del x, h0, c0
             if self.num_directions == 2:
                 packed_h_t = torch.cat([packed_h_t[i] for i in range(packed_h_t.size(0))], -1)
         else:
