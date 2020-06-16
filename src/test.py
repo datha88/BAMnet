@@ -40,7 +40,7 @@ if __name__ == '__main__':
                                         max_query_markup_size=opt['query_markup_size'], \
                                         max_ans_bow_size=opt['ans_bow_size'], \
                                         vocab2id=vocab2id)'''
-    '''for indx in range(2):
+    for indx in range(2):
         #indx = 0       
         test_queries = load_json(os.path.join(opt['full_data_dir'], 'test_'+str(indx)+'_queries.json'))
         test_raw_queries = load_json(os.path.join(opt['full_data_dir'], 'test_'+str(indx)+'_raw_queries.json'))
@@ -60,10 +60,10 @@ if __name__ == '__main__':
         dump_json(test_queries, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_queries.json'))
         dump_json(test_query_words, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_query_words.json'))
         dump_json(test_query_lengths, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_query_lengths.json'))
-        dump_json(test_memories, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_memories.json'))'''
+        dump_json(test_memories, os.path.join(opt['vectorize_data_dir'], 'test_'+str(indx)+'_memories.json'))        
     
     start = timeit.default_timer()
-    test_len = 100
+    test_len = 10
     test_index_array = []
     for i in range(test_len):
         test_index_array.append(i)

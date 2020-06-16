@@ -12,9 +12,9 @@ test_data: 'test_vec.json'
 pre_word2vec: '../data/WebQ/glove_pretrained_300d_w2v.npy'
 
 # Full vocab
-vocab_size: 117497
-num_ent_types: 7878
-num_relations: 985
+vocab_size: 282949
+num_ent_types: 17594
+num_relations: 1543
 
 num_query_words: 10
 
@@ -38,13 +38,13 @@ word_emb_dropout: 0.3
 que_enc_dropout: 0.3
 ans_enc_dropout: 0.2
 attention: 'add'
-num_hops: 1
+num_hops: 2 #1
 
 # Training
 learning_rate: 0.001
 #batch_size: 2
-batch_size: 2
-num_epochs: 2
+batch_size: 16
+num_epochs: 3
 valid_patience: 10
 margin: 1
 
@@ -55,4 +55,4 @@ test_margin:
 
 # Device
 no_cuda: False
-gpu: 0
+gpu: 3

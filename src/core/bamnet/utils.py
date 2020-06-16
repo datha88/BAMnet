@@ -9,6 +9,10 @@ from torch.autograd import Variable
 import numpy as np
 
 
+def print_gpu_memory(use_cuda):
+    if(use_cuda):
+        print('GPU Memory :',torch.cuda.memory_allocated())
+    return
 def to_cuda(x, use_cuda=True):
     if use_cuda and torch.cuda.is_available():
         x = x.cuda()

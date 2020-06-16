@@ -16,7 +16,7 @@ from torch.nn import MultiLabelMarginLoss
 import torch.backends.cudnn as cudnn
 
 from .modules import BAMnet
-from .utils import to_cuda, next_batch
+from .utils import to_cuda, next_batch, print_gpu_memory
 from ..utils.utils import load_ndarray
 from ..utils.generic_utils import unique
 from ..utils.metrics import *
@@ -177,11 +177,15 @@ class BAMnetAgent(object):
     #@profile
     def train(self, seed_val=2):
         #print('Training size: {}, Validation size: {}'.format(len(train_y), len(valid_y)))
-        train_len = 10
-        valid_len = 5
+        train_len = 1561
+        valid_len = 404
         
         random.seed(seed_val)
         print('Training size: {}, Validation size: {}'.format( train_len, valid_len))
+
+        #print('GPU Memory at starting of train: ')
+        #print_gpu_memory()
+        n_incr_error = 0  # nb. of consecutive increase in error
         best_loss = float("inf")
         '''
         random1 = np.random.RandomState(seed)
@@ -202,10 +206,10 @@ class BAMnetAgent(object):
         '''
         #num_batches = len(queries) // self.opt['batch_size'] + (len(queries) % self.opt['batch_size'] != 0)
         num_batches = train_len // self.opt['batch_size'] + (train_len % self.opt['batch_size'] != 0)
-        print('Number of train batches: ',num_batches)
+        print('Number of train batches: ', num_batches)
         #num_valid_batches = len(valid_queries) // self.opt['batch_size'] + (len(valid_queries) % self.opt['batch_size'] != 0)
         num_valid_batches = valid_len // self.opt['batch_size'] + (valid_len % self.opt['batch_size'] != 0)
-        print('Number of valid batches: ',num_valid_batches)
+        print('Number of valid batches: ', num_valid_batches)
 
         random_index_array = []
         for i in range(train_len):
@@ -216,7 +220,10 @@ class BAMnetAgent(object):
         
         # generate batch size random numbers between 1 and train length
         for epoch in range(1, self.opt['num_epochs'] + 1):
+            print('Current device: ', torch.cuda.current_device())
+            print('GPU Memory at starting epoch: ', torch.cuda.memory_allocated())
             start = timeit.default_timer()
+            n_incr_error += 1
             train_loss = 0
             random.shuffle(random_index_array)
             print('Epoch', epoch)
@@ -224,18 +231,25 @@ class BAMnetAgent(object):
             for randomlist in randomlist_gen:
                 #print(len(randomlist))
                 #print('Getting random batch:train_gen: %ss' % (timeit.default_timer()))
-                train_gen = get_random_batch(self.opt,randomlist)
+                train_gen = get_random_batch(self.opt, randomlist)
+                del randomlist
                 for batch_xs, batch_ys in train_gen:
                     #print('Inside:train_gen: %ss' % (timeit.default_timer()))  
+                    #train_loss += float(self.train_step(batch_xs, batch_ys) / num_batches)
                     train_loss += float(self.train_step(batch_xs, batch_ys) / num_batches)
                     del batch_xs, batch_ys
+                    print('GPU Cache after training batch: ', torch.cuda.memory_cached())
+                    torch.cuda.empty_cache()
+                    print('GPU Cache after clearing cache: ', torch.cuda.memory_cached())
                 del train_gen
+            del randomlist_gen
             
             random.shuffle(valid_index_array)
             randomlist_valid_gen = get_random_index_batch(valid_index_array, self.opt['batch_size'])
             for randomlist in randomlist_valid_gen:
-                #print('Getting random batch:valid_gen: %ss' % (timeit.default_timer()))
-                valid_gen = get_random_batch(self.opt,randomlist,mode='valid')
+                print('Getting random batch:valid_gen: %ss' % (timeit.default_timer()))
+                valid_gen = get_random_batch(self.opt, randomlist, mode='valid')
+                del randomlist
                 valid_loss = 0
                 for batch_valid_xs, batch_valid_ys in valid_gen:
                     #print('Inside:valid_gen: %ss' % (timeit.default_timer()))
@@ -245,9 +259,15 @@ class BAMnetAgent(object):
                 #print('Valid loss', valid_loss)
                 del valid_gen
                 self.scheduler.step(valid_loss)
+            del randomlist_valid_gen
             
             # if False:
             if epoch > 0:
+                print('GPU Memory before clearing cache: ', torch.cuda.memory_allocated())
+                print('GPU Cache before clearing cache: ', torch.cuda.memory_cached())
+                torch.cuda.empty_cache()
+                print('GPU Cache after clearing cache: ', torch.cuda.memory_cached())
+                print('GPU Memory after clearing cache and before starting with prediction: ', torch.cuda.memory_allocated())
                 valid_f1 = self.predict(valid_index_array, self.opt, batch_size=1, margin=self.opt['margin'], silence=True)
                 #print('After prediction: %ss' % (timeit.default_timer()))
                 
@@ -270,13 +290,17 @@ class BAMnetAgent(object):
                 print('Early stopping occured. Optimization Finished!')
                 self.save(self.opt['model_file'] + '.final')
                 break
+            print('GPU Memory after epoch: ', torch.cuda.memory_allocated())
+            torch.cuda.empty_cache()
+            print('GPU Memory after clearing cache: ', torch.cuda.memory_allocated())
+            print('GPU Cache after clearing cache: ', torch.cuda.memory_cached())
         self.save(self.opt['model_file'] + '.final')
     
     #@profile
     def predict(self, valid_index_array, opt, batch_size=32, margin=1, ys=None, verbose=False, silence=False):
         '''Prediction scores are returned in the verbose mode.
         '''
-        #print('Start prediction: %ss' % (timeit.default_timer()))
+        print('Start prediction with batch size: ', batch_size)
         if not silence:
             test_len =100
             
@@ -301,6 +325,7 @@ class BAMnetAgent(object):
             #predictions = []
             out_f = open('error_analysis.txt', 'w',encoding='utf-8')
             randomlist_valid_gen = get_random_index_batch(valid_index_array, batch_size)
+            del valid_index_array
             for randomlist in randomlist_valid_gen:
                 valid_gen = get_random_batch(opt,randomlist,mode='valid',predict_tag=1)
                 #print('Predict:Getting random batch:valid_gen: %ss' % (timeit.default_timer()))
@@ -315,20 +340,21 @@ class BAMnetAgent(object):
                     
                     filename = 'valid_' + str(randomlist[0]) + '.json'
                     gold_ans_labels = get_valid_anslabels_from_file(self.opt, filename)               
-                    print('Valid gold ans labels', gold_ans_labels)
+                    #print('Valid gold ans labels', gold_ans_labels)
                     recall, precision, f1 = calc_f1(gold_ans_labels, predictions[0])
-                    print(recall,precision,f1)
+                    #print(recall, precision, f1)
                     avg_recall += float(recall)
                     avg_precision += float(precision)
-                    avg_f1 += f1
+                    avg_f1 += float(f1)
                     count += 1
                     #print('Predict:After:valid_gen: %ss' % (timeit.default_timer()))
                     if f1 < 0.6:
                         out_f.write('{}\t{}\t{}\t{}\n'.format(randomlist[0], gold_ans_labels, predictions[0], f1))
+                    del predictions
                     #valid_f1 = calc_avg_f1(valid_gold_ans_labels, predictions, verbose=False)[-1]
-                del valid_gen
-            out_f.close()
+                del valid_gen, randomlist
             del randomlist_valid_gen
+            out_f.close()
             avg_recall = float(avg_recall) / count
             avg_precision = float(avg_precision) / count
             avg_f1 = float(avg_f1) / count
@@ -396,7 +422,9 @@ class BAMnetAgent(object):
             queries = to_cuda(torch.LongTensor(xs[1]), self.opt['cuda'])
             query_words = to_cuda(torch.LongTensor(xs[2]), self.opt['cuda'])
             query_lengths = to_cuda(torch.LongTensor(xs[5]), self.opt['cuda'])
+            del xs, ys
             mem_hop_scores = self.model(selected_memories, queries, query_lengths, query_words, ctx_mask=None)
+            del selected_memories, queries, query_lengths, query_words
             # Set margin
             new_ys, mask_ys = self.pack_gold_ans(new_ys, mem_hop_scores[-1].size(1), placeholder=-1)
 
@@ -404,12 +432,15 @@ class BAMnetAgent(object):
             for _, s in enumerate(mem_hop_scores):
                 s = self.set_loss_margin(s, mask_ys, self.opt['margin'])
                 loss += self.loss_fn(s, new_ys)
+                del s
             loss /= len(mem_hop_scores)
+            del mem_hop_scores, ctx_mask, new_ys, mask_ys
 
             if is_training:
                 for o in self.optimizers.values():
                     o.zero_grad()
                 loss.backward()
+                loss = loss.detach()
                 for o in self.optimizers.values():
                     o.step()
             return loss.item()
@@ -426,10 +457,14 @@ class BAMnetAgent(object):
             query_words = to_cuda(torch.LongTensor(xs[2]), self.opt['cuda'])
             query_lengths = to_cuda(torch.LongTensor(xs[5]), self.opt['cuda'])
             del xs
+            #print('GPU Memory before predict step model: ')
+            #print_gpu_memory()
             mem_hop_scores = self.model(memories, queries, query_lengths, query_words, ctx_mask=None)
             del memories, queries, query_words, query_lengths
+            #print('GPU Memory after predict step model: ')
+            #print_gpu_memory()
             predictions = self.ranked_predictions(cand_labels, mem_hop_scores[-1].data, margin)
-            print('predict_step --> predictions: ', predictions)
+            #print('predict_step --> predictions: ', predictions)
             del cand_labels, mem_hop_scores
             return predictions
 
@@ -476,9 +511,11 @@ class BAMnetAgent(object):
             xx += [ctx_bow, ctx_bow_len, ctx_num]
             xx += [np.array(x)[augmented_selected_inds] for x in memories[i][CTX_BOW_INDEX+1:]]
             selected_memories.append(xx)
+            del xx
             new_ys.append(list(range(num_gold)))
             ctx_mask.append(tmp_ctx_mask)
-        del memories
+            del tmp_ctx_mask
+        del memories, ys, raw_queries, query_mentions, queries
 
         max_ctx_num = max(max([y for x in selected_memories for y in x[CTX_BOW_INDEX]]), 1)
         for i in range(len(selected_memories)): # Example
@@ -522,7 +559,7 @@ class BAMnetAgent(object):
             xx += [np.array(x)[augmented_inds] for x in memories[i][CTX_BOW_INDEX+1:]]
             pad_memories.append(xx)
             ctx_mask.append(tmp_ctx_mask)
-        del memories
+        del memories, raw_queries, query_mentions, queries
 
         max_ctx_num = max(max([y for x in pad_memories for y in x[CTX_BOW_INDEX]]), 1)
         for i in range(len(pad_memories)): # Example

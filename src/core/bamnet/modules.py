@@ -70,6 +70,7 @@ class BAMnet(nn.Module):
 
         # Answer encoder
         _, _, _, x_type_bow, x_types, x_type_bow_len, x_path_bow, x_paths, x_path_bow_len, x_ctx_ent, x_ctx_ent_len, x_ctx_ent_num, _, _, _, _ = memories
+        del memories, queries, query_lengths
         ans_comp_val, ans_comp_key = self.ans_enc(x_type_bow, x_types, x_type_bow_len, x_path_bow, x_paths, x_path_bow_len, x_ctx_ent, x_ctx_ent_len, x_ctx_ent_num)
         if self.ans_enc_dropout:
             for _ in range(len(ans_comp_key)):
@@ -115,6 +116,7 @@ class BAMnet(nn.Module):
 
         # Kb-aware question attention module
         (ans_val, ans_key), (q_att, Q_r), query_mask = self.kb_aware_query_enc(memories, queries, query_lengths, ans_mask, ctx_mask=ctx_mask)
+        del memories, queries, query_lengths
         ans_val = torch.cat([each.unsqueeze(2) for each in ans_val], 2)
         ans_key = torch.cat([each.unsqueeze(2) for each in ans_key], 2)
 
@@ -141,6 +143,7 @@ class BAMnet(nn.Module):
 
         # Kb-aware question attention module
         (ans_val, ans_key), (q_att, Q_r), query_mask = self.kb_aware_query_enc(memories, queries, query_lengths, ans_mask, ctx_mask=ctx_mask)
+        del memories, queries, query_lengths
         ans_key = torch.cat([each.unsqueeze(2) for each in ans_key], 2)
 
         mem_hop_scores = []

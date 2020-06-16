@@ -1,6 +1,7 @@
 import timeit
 import argparse
 #import numpy as np
+import torch
 
 from core.bamnet.bamnet import BAMnetAgent
 from core.build_data.build_all import build
@@ -16,14 +17,14 @@ if __name__ == '__main__':
     print_config(opt)
 
     # Ensure data is built
-    build(opt['data_dir'])
+    #build(opt['data_dir'])
     #train_vec = load_json(os.path.join(opt['data_dir'], opt['train_data']))
     #valid_vec = load_json(os.path.join(opt['data_dir'], opt['valid_data']))
-
+    #print('GPU Memory at starting: ', torch.cuda.memory_allocated())
     vocab2id = load_json(os.path.join(opt['data_dir'], 'vocab2id.json'))
     ctx_stopwords = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', "don't", 'should', "should've", 'now', 'd', 'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't", 'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"}
-    '''
-    for indx in range(10):
+
+    '''for indx in range(1000, 1561):
         #indx = 0       
         train_vec = load_json(os.path.join(opt['split_data_dir'], 'train'+str(indx)+'.json'))
         print('train'+str(indx)+'.json')
@@ -42,8 +43,8 @@ if __name__ == '__main__':
                                         vocab2id=vocab2id)
         train_vec = train_queries, train_raw_queries, train_query_mentions, train_query_words, train_query_lengths, train_memories, train_gold_ans_inds
         dump_json(train_vec, os.path.join(opt['vectorized_split_data_dir'], 'train_'+str(indx)+'.json'))
-      
-    for indx in range(10):
+    
+    for indx in range(404):
         valid_vec = load_json(os.path.join(opt['split_data_dir'], 'valid'+str(indx)+'.json'))
         valid_queries, valid_raw_queries, valid_query_mentions, valid_memories, valid_cand_labels, valid_gold_ans_inds, valid_gold_ans_labels = valid_vec
         valid_queries, valid_query_words, valid_query_lengths, valid_memories = vectorize_data(valid_queries, valid_query_mentions, \
@@ -61,8 +62,17 @@ if __name__ == '__main__':
         
     '''
     start = timeit.default_timer()
-
+    '''if opt['cuda']:
+        print('GPU Memory before init model: ', torch.cuda.memory_allocated())
+    '''
     model = BAMnetAgent(opt, ctx_stopwords, vocab2id)
+    '''if opt['cuda']:
+        print('GPU Memory after init model: ', torch.cuda.memory_allocated())
+    '''
+    del opt, ctx_stopwords, vocab2id
+    '''if opt['cuda']:
+        print('GPU Memory before starting train: ', torch.cuda.memory_allocated())
+    '''
     model.train()
-
-    #print('Runtime: %ss' % (timeit.default_timer() - start))
+    
+    print('Runtime: %ss' % (timeit.default_timer() - start))
