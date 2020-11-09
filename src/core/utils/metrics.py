@@ -40,22 +40,36 @@ def calc_f1(gold_list, pred_list):
     if precision + recall > 0:
         f1 = 2 * recall * precision / (precision + recall)
     return (recall, precision, f1)
-
+def calc_accuracy(gold_list, pred_list):
+    correct = 0
+    count = len(gold_list)
+    if len(gold_list) == len(pred_list):
+        for i in range(count):
+            if(gold_list[i] in pred_list):
+                correct +=1
+    if correct == count :
+        return 1
+    else:
+        return 0
+    return accuracy
 def calc_avg_f1(gold_list, pred_list, verbose=True):
     """Go over all examples and compute recall, precision and F1"""
     avg_recall = 0
     avg_precision = 0
     avg_f1 = 0
     count = 0
+    avg_correct = 0
 
     out_f = open('error_analysis.txt', 'w')
     assert len(gold_list) == len(pred_list)
     for i, gold in enumerate(gold_list):
         recall, precision, f1 = calc_f1(gold, pred_list[i])
+        correct = calc_accuracy(gold, pred_list[i])
         avg_recall += recall
         avg_precision += precision
         avg_f1 += f1
         count += 1
+        avg_correct += correct
         if True:
         # if f1 < 0.6:
             out_f.write('{}\t{}\t{}\t{}\n'.format(i, gold, pred_list[i], f1))
@@ -64,14 +78,18 @@ def calc_avg_f1(gold_list, pred_list, verbose=True):
     avg_recall = float(avg_recall) / count
     avg_precision = float(avg_precision) / count
     avg_f1 = float(avg_f1) / count
+    avg_correct =float(avg_correct) / count
+    avg_correct = avg_correct * 100
     avg_new_f1 = 0
     if avg_precision + avg_recall > 0:
         avg_new_f1 = 2 * avg_recall * avg_precision / (avg_precision + avg_recall)
+    
 
     if verbose:
         print("Number of questions: " + str(count))
         print("Average recall over questions: " + str(avg_recall))
         print("Average precision over questions: " + str(avg_precision))
         print("Average f1 over questions: " + str(avg_f1))
+        print("Accuracy: "+ str(avg_correct))
         # print("F1 of average recall and average precision: " + str(avg_new_f1))
     return count, avg_recall, avg_precision, avg_f1
